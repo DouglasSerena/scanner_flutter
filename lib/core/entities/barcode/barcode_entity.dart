@@ -22,6 +22,7 @@ class Barcode {
   }) {
     return Barcode(id: id, value: value, type: type);
   }
+
   factory Barcode.fromJson(Map<String, dynamic> json) {
     return Barcode.create(
       id: json['id'],

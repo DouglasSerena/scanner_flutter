@@ -6,9 +6,14 @@ import 'package:scanner_flutter/infra/databases/back4app/back4app_helper.dart';
 
 class Back4appScannerRepository extends IScannerRepository {
   @override
-  Future delete(Barcode barcode) async {
-    ParseResponse response =
-        await Back4appHelper.getObject("scanners").delete(id: barcode.id);
+  Future save(Barcode barcode) async {
+    ParseObject object = Back4appHelper.getObject("scanners");
+
+    for (final record in barcode.toMap().entries) {
+      object.set(record.key, record.value);
+    }
+
+    ParseResponse response = await object.save();
   }
 
   @override
@@ -33,13 +38,8 @@ class Back4appScannerRepository extends IScannerRepository {
   }
 
   @override
-  Future save(Barcode barcode) async {
-    ParseObject object = Back4appHelper.getObject("scanners");
-
-    for (final record in barcode.toMap().entries) {
-      object.set(record.key, record.value);
-    }
-
-    ParseResponse response = await object.save();
+  Future delete(Barcode barcode) async {
+    ParseResponse response =
+        await Back4appHelper.getObject("scanners").delete(id: barcode.id);
   }
 }

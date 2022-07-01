@@ -26,16 +26,14 @@ List<Barcode> _barcodesMemory = [
 class InMemoryScannerRepository extends IScannerRepository {
   List<Barcode> barcodes = _barcodesMemory;
 
-  InMemoryScannerRepository();
+  @override
+  Future save(Barcode barcode) async {
+    barcodes.add(barcode);
+  }
 
   @override
   Future<List<Barcode>> findAll() async {
     return [...barcodes];
-  }
-
-  @override
-  Future save(Barcode barcode) async {
-    barcodes.add(barcode);
   }
 
   @override

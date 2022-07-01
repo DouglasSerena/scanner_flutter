@@ -10,9 +10,17 @@ void main() async {
 
   await Environment.load();
 
-  await SqliteHelper.connect();
-  await Back4appHelper.connect();
-  await FirebaseHelper.connect();
+  switch (Environment.get("DATABASE")) {
+    case "FIREBASE":
+      await FirebaseHelper.connect();
+      break;
+    case "SQLITE":
+      await SqliteHelper.connect();
+      break;
+    case "BACK4APP":
+      await Back4appHelper.connect();
+      break;
+  }
 
   runApp(const Application());
 }

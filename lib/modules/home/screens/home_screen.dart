@@ -5,7 +5,6 @@ import 'package:scanner_flutter/core/entities/barcode/barcode_type.dart';
 import 'package:scanner_flutter/core/usecase/delete_scanner_usecase.dart';
 import 'package:scanner_flutter/core/usecase/find_all_scanner_usecase.dart';
 import 'package:scanner_flutter/core/usecase/save_scanner_usecase.dart';
-import 'package:scanner_flutter/infra/databases/databases.dart';
 import 'package:scanner_flutter/modules/factories/delete_scanner_usecase_factory.dart';
 import 'package:scanner_flutter/modules/factories/find_all_scanner_usecase_factory.dart';
 import 'package:scanner_flutter/modules/factories/save_scanner_usecase_factory.dart';
@@ -27,17 +26,14 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   bool loading = true;
   List<Barcode> barcodes = [];
-
-  final Databases useDatabase = Databases.back4app;
-
   late final SaveScannerUseCase saveScannerUseCase;
   late final DeleteScannerUseCase deleteScannerUseCase;
   late final FindAllScannerUseCase findAllScannerUseCase;
 
   _HomeScreenState() : super() {
-    findAllScannerUseCase = findAllScannerUseCaseFactory(useDatabase);
-    deleteScannerUseCase = deleteScannerUseCaseFactory(useDatabase);
-    saveScannerUseCase = saveScannerUseCaseFactory(useDatabase);
+    findAllScannerUseCase = findAllScannerUseCaseFactory();
+    deleteScannerUseCase = deleteScannerUseCaseFactory();
+    saveScannerUseCase = saveScannerUseCaseFactory();
   }
 
   @override
