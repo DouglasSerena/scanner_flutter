@@ -1,0 +1,15 @@
+enum BarcodeType {
+  unknown,
+  contactInfo,
+  email,
+  isbn,
+  phone,
+  product,
+  sms,
+  text,
+  url,
+  wifi,
+  geo,
+  calendarEvent,
+  driverLicense,
+}
