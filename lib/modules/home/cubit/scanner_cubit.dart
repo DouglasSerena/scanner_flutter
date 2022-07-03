@@ -21,8 +21,10 @@ class ScannerCubit extends Cubit<StateType> {
     _findAllScannerUseCase = findAllScannerUseCase;
   }
 
-  Future find() async {
-    emit(LoadingState());
+  Future find({bool loading = false}) async {
+    if (loading) {
+      emit(LoadingState());
+    }
 
     try {
       List<Barcode> barcodes = (await _findAllScannerUseCase.execute());

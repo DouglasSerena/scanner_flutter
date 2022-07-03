@@ -48,7 +48,7 @@ class _HomeScreenState extends State<HomeScreen> {
         actions: const [IconButtonThemeWidget()],
       ),
       body: SafeArea(
-        child: Column(
+        child: Stack(
           children: [
             _buildScanner(),
             const SizedBox(height: 10),
@@ -86,28 +86,38 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildHistory() {
     return Expanded(
-      child: Column(
-        children: [
-          _buildTitle(),
-          BlocBuilder<ScannerCubit, StateType>(
-            bloc: scannerCubit,
-            builder: (context, state) {
-              if (state is SuccessState<List<Barcode>>) {
-                return _buildList(state.result);
-              }
-
-              if (state is ErrorState) {
-                return _buildError(state.message);
-              }
-
-              if (state is EmptyState) {
-                return _buildEmpty();
-              }
-
-              return _buildLoading();
-            },
-          )
-        ],
+      child: DraggableScrollableSheet(
+        minChildSize: 0.45,
+        maxChildSize: 0.8,
+        initialChildSize: 0.45,
+        builder: (context, scrollController) {
+          return Container(
+            decoration: BoxDecoration(
+              color: Theme.of(context).cardColor,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(24),
+                topRight: Radius.circular(24),
+              ),
+            ),
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 8, bottom: 4),
+                  child: Container(
+                    width: 100,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).backgroundColor,
+                      borderRadius: const BorderRadius.all(Radius.circular(8)),
+                    ),
+                  ),
+                ),
+                _buildTitle(),
+                _buildContent(scrollController)
+              ],
+            ),
+          );
+        },
       ),
     );
   }
@@ -115,7 +125,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildTitle() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.only(top: 6, left: 18, right: 18),
+      padding: const EdgeInsets.only(top: 9, left: 18, right: 18),
       child: const Text(
         "Historio",
         style: TextStyle(
@@ -123,6 +133,27 @@ class _HomeScreenState extends State<HomeScreen> {
           fontWeight: FontWeight.bold,
         ),
       ),
+    );
+  }
+
+  Widget _buildContent(ScrollController scrollController) {
+    return BlocBuilder<ScannerCubit, StateType>(
+      bloc: scannerCubit,
+      builder: (context, state) {
+        if (state is SuccessState<List<Barcode>>) {
+          return _buildList(state.result, scrollController);
+        }
+
+        if (state is ErrorState) {
+          return _buildError(state.message);
+        }
+
+        if (state is EmptyState) {
+          return _buildEmpty();
+        }
+
+        return _buildLoading();
+      },
     );
   }
 
@@ -146,7 +177,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildList(List<Barcode> barcodes) {
+  Widget _buildList(List<Barcode> barcodes, ScrollController scrollController) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.only(
@@ -156,10 +187,11 @@ class _HomeScreenState extends State<HomeScreen> {
           bottom: 16,
         ),
         child: RefreshIndicator(
-          onRefresh: () => scannerCubit.find(),
+          onRefresh: () => scannerCubit.find(loading: false),
           triggerMode: RefreshIndicatorTriggerMode.anywhere,
           child: ListView.builder(
             itemCount: barcodes.length,
+            controller: scrollController,
             itemBuilder: (_, index) {
               Barcode barcode = barcodes[index];
 
