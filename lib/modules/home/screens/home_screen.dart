@@ -1,20 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mobile_scanner/mobile_scanner.dart' as MobileScanner;
 import 'package:scanner_flutter/core/entities/barcode/barcode_entity.dart';
 import 'package:scanner_flutter/core/entities/barcode/barcode_type.dart';
-import 'package:scanner_flutter/core/usecase/delete_scanner_usecase.dart';
-import 'package:scanner_flutter/core/usecase/find_all_scanner_usecase.dart';
-import 'package:scanner_flutter/core/usecase/save_scanner_usecase.dart';
 import 'package:scanner_flutter/modules/factories/delete_scanner_usecase_factory.dart';
 import 'package:scanner_flutter/modules/factories/find_all_scanner_usecase_factory.dart';
 import 'package:scanner_flutter/modules/factories/save_scanner_usecase_factory.dart';
+import 'package:scanner_flutter/modules/home/cubit/scanner_cubit.dart';
 import 'package:scanner_flutter/modules/home/widgets/card_barcode_email_widget.dart';
 import 'package:scanner_flutter/modules/home/widgets/card_barcode_phone_number_widget.dart';
 import 'package:scanner_flutter/modules/home/widgets/card_barcode_sms_widget.dart';
 import 'package:scanner_flutter/modules/home/widgets/card_barcode_text_widget.dart';
 import 'package:scanner_flutter/modules/home/widgets/card_barcode_unknown_widget.dart';
 import 'package:scanner_flutter/modules/home/widgets/card_barcode_link_widget.dart';
-import 'package:scanner_flutter/modules/home/widgets/qr_overlay_widget.dart';
+import 'package:scanner_flutter/shared/state_type.dart';
+import 'package:scanner_flutter/shared/widgets/icon_theme.widget.dart';
+import 'package:scanner_flutter/shared/widgets/qr_overlay_widget.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -24,77 +25,28 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  bool loading = true;
-  List<Barcode> barcodes = [];
-  late final SaveScannerUseCase saveScannerUseCase;
-  late final DeleteScannerUseCase deleteScannerUseCase;
-  late final FindAllScannerUseCase findAllScannerUseCase;
+  final scannerCubit = ScannerCubit(
+    findAllScannerUseCase: findAllScannerUseCaseFactory(),
+    deleteScannerUseCase: deleteScannerUseCaseFactory(),
+    saveScannerUseCase: saveScannerUseCaseFactory(),
+  );
 
-  _HomeScreenState() : super() {
-    findAllScannerUseCase = findAllScannerUseCaseFactory();
-    deleteScannerUseCase = deleteScannerUseCaseFactory();
-    saveScannerUseCase = saveScannerUseCaseFactory();
-  }
+  _HomeScreenState() : super();
 
   @override
   void initState() {
     super.initState();
 
-    onFindAllScanners().whenComplete(() {
-      setState(() {
-        loading = false;
-      });
-    });
-  }
-
-  Future onFindAllScanners() async {
-    List<Barcode> _barcodes = await findAllScannerUseCase.execute();
-    setState(() {
-      barcodes = _barcodes;
-    });
-  }
-
-  Future onSaveScanner(String value, BarcodeType type) async {
-    try {
-      await saveScannerUseCase
-          .execute(value, type)
-          .whenComplete(onFindAllScanners);
-    } catch (error) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(error.toString()),
-          action: SnackBarAction(
-            label: "OK",
-            onPressed: () =>
-                ScaffoldMessenger.of(context).hideCurrentSnackBar(),
-          ),
-        ),
-      );
-    }
-  }
-
-  Future onDeleteScanner(Barcode barcode) async {
-    try {
-      await deleteScannerUseCase
-          .execute(barcode)
-          .whenComplete(onFindAllScanners);
-    } catch (error) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(error.toString()),
-          action: SnackBarAction(
-            label: "OK",
-            onPressed: () =>
-                ScaffoldMessenger.of(context).hideCurrentSnackBar(),
-          ),
-        ),
-      );
-    }
+    scannerCubit.find();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: const Text("Scanner"),
+        actions: const [IconButtonThemeWidget()],
+      ),
       body: SafeArea(
         child: Column(
           children: [
@@ -117,7 +69,7 @@ class _HomeScreenState extends State<HomeScreen> {
             allowDuplicates: false,
             onDetect: (barcode, args) {
               if (barcode.rawValue != null) {
-                onSaveScanner(
+                scannerCubit.add(
                   barcode.rawValue!,
                   BarcodeType.values[barcode.type.index],
                 );
@@ -137,25 +89,26 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(
         children: [
           _buildTitle(),
-          Builder(
-            builder: (context) {
-              if (loading) {
-                return _buildLoading();
+          BlocBuilder<ScannerCubit, StateType>(
+            bloc: scannerCubit,
+            builder: (context, state) {
+              if (state is SuccessState<List<Barcode>>) {
+                return _buildList(state.result);
               }
-              return _buildList();
+
+              if (state is ErrorState) {
+                return _buildError(state.message);
+              }
+
+              if (state is EmptyState) {
+                return _buildEmpty();
+              }
+
+              return _buildLoading();
             },
           )
         ],
       ),
-    );
-  }
-
-  Widget _buildLoading() {
-    return Column(
-      children: const [
-        SizedBox(height: 50),
-        CircularProgressIndicator(),
-      ],
     );
   }
 
@@ -173,57 +126,88 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildList() {
+  Widget _buildLoading() {
+    return Column(
+      children: const [
+        SizedBox(height: 50),
+        CircularProgressIndicator(),
+      ],
+    );
+  }
+
+  Widget _buildEmpty() {
+    return Column(
+      children: const [
+        SizedBox(height: 15),
+        Text(
+          "Scanner alguma coisa para conseguir visualiza-lo aqui.",
+        )
+      ],
+    );
+  }
+
+  Widget _buildList(List<Barcode> barcodes) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.only(top: 6, left: 16, right: 16, bottom: 16),
-        child: Builder(
-          builder: (context) {
-            if (barcodes.isEmpty) {
-              return Column(
-                children: const [
-                  SizedBox(height: 15),
-                  Text(
-                    "Scanner alguma coisa para conseguir visualiza-lo aqui.",
-                  )
-                ],
-              );
-            }
+        padding: const EdgeInsets.only(
+          top: 6,
+          left: 16,
+          right: 16,
+          bottom: 16,
+        ),
+        child: RefreshIndicator(
+          onRefresh: () => scannerCubit.find(),
+          triggerMode: RefreshIndicatorTriggerMode.anywhere,
+          child: ListView.builder(
+            itemCount: barcodes.length,
+            itemBuilder: (_, index) {
+              Barcode barcode = barcodes[index];
 
-            return RefreshIndicator(
-              onRefresh: onFindAllScanners,
-              triggerMode: RefreshIndicatorTriggerMode.anywhere,
-              child: ListView.builder(
-                itemCount: barcodes.length,
-                itemBuilder: (context, index) {
-                  Barcode barcode = barcodes[index];
-
-                  switch (barcode.type) {
-                    case BarcodeType.url:
-                      return CardBarcodeLinkWidget(
-                          barcode: barcode, onDelete: onDeleteScanner);
-                    case BarcodeType.email:
-                      return CardBarcodeEmailWidget(
-                          barcode: barcode, onDelete: onDeleteScanner);
-                    case BarcodeType.sms:
-                      return CardBarcodeSmsWidget(
-                          barcode: barcode, onDelete: onDeleteScanner);
-                    case BarcodeType.phone:
-                      return CardBarcodePhoneNumberWidget(
-                          barcode: barcode, onDelete: onDeleteScanner);
-                    case BarcodeType.text:
-                      return CardBarcodeTextWidget(
-                          barcode: barcode, onDelete: onDeleteScanner);
-                    default:
-                      return CardBarcodeUnknownWidget(
-                          barcode: barcode, onDelete: onDeleteScanner);
-                  }
-                },
-              ),
-            );
-          },
+              switch (barcode.type) {
+                case BarcodeType.url:
+                  return CardBarcodeLinkWidget(
+                    barcode: barcode,
+                    onDelete: (barcode) => scannerCubit.delete(barcode),
+                  );
+                case BarcodeType.email:
+                  return CardBarcodeEmailWidget(
+                    barcode: barcode,
+                    onDelete: (barcode) => scannerCubit.delete(barcode),
+                  );
+                case BarcodeType.sms:
+                  return CardBarcodeSmsWidget(
+                    barcode: barcode,
+                    onDelete: (barcode) => scannerCubit.delete(barcode),
+                  );
+                case BarcodeType.phone:
+                  return CardBarcodePhoneNumberWidget(
+                    barcode: barcode,
+                    onDelete: (barcode) => scannerCubit.delete(barcode),
+                  );
+                case BarcodeType.text:
+                  return CardBarcodeTextWidget(
+                    barcode: barcode,
+                    onDelete: (barcode) => scannerCubit.delete(barcode),
+                  );
+                default:
+                  return CardBarcodeUnknownWidget(
+                    barcode: barcode,
+                    onDelete: (barcode) => scannerCubit.delete(barcode),
+                  );
+              }
+            },
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _buildError(String message) {
+    return Column(
+      children: [
+        const Text("Houve um error."),
+        Text(message),
+      ],
     );
   }
 }

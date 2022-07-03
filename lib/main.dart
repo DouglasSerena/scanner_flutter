@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:scanner_flutter/application.dart';
 import 'package:scanner_flutter/infra/databases/back4app/back4app_helper.dart';
 import 'package:scanner_flutter/infra/databases/firebase/firebase_helper.dart';
@@ -22,5 +23,7 @@ void main() async {
       break;
   }
 
-  runApp(const Application());
+  BlocOverrides.runZoned(
+    () => runApp(const Application()),
+  );
 }
